@@ -34,7 +34,7 @@ module g2MemWrapper(clk, RST, g2MemWe, g2MemWa, g2Dat, g2V, g2R);
   output reg g2V;
   input g2R;
 
-  reg RSTPre, RstRatch = 1'b0;
+  reg RSTPre, RstLatch = 1'b0;
   reg [datBit:0] g2Temp[0:totUnits];
   wire [datBit:0] g2TempAdded[0:totUnits];
   wire [addrBit:0] addr[0:totUnits];
@@ -45,8 +45,8 @@ module g2MemWrapper(clk, RST, g2MemWe, g2MemWa, g2Dat, g2V, g2R);
   generate
     genvar pIdx;
     for(pIdx = 0; pIdx <= totUnits; pIdx = pIdx + 1) begin
-      assign g2TempAdded[pIdx] = (!RstRatch) ? g2Temp[pIdx] + 1'b1 : 1'b0;
-      assign addr[pIdx] = (!RstRatch) ? g2MemWa[pIdx] : g2RP;
+      assign g2TempAdded[pIdx] = (!RstLatch) ? g2Temp[pIdx] + 1'b1 : 1'b0;
+      assign addr[pIdx] = (!RstLatch) ? g2MemWa[pIdx] : g2RP;
     end
   endgenerate
 
@@ -54,12 +54,12 @@ module g2MemWrapper(clk, RST, g2MemWe, g2MemWa, g2Dat, g2V, g2R);
   always @ (posedge clk) begin
     RSTPre <= RST;
     if(RSTPre && !RST) begin // neg edge
-      RstRatch <= 1'b1;
+      RstLatch <= 1'b1;
       g2RP <= 1'b0;
-    end else if(RstRatch) begin
+    end else if(RstLatch) begin
       if(g2R) begin 
         g2RP <= g2RP + {{addrBit{1'b0}}, 1'b1};
-        if(g2RP=={(addrBit+1){1'b1}}) RstRatch <= 1'b0;
+        if(g2RP=={(addrBit+1){1'b1}}) RstLatch <= 1'b0;
       end
     end
   end
@@ -68,7 +68,7 @@ module g2MemWrapper(clk, RST, g2MemWe, g2MemWa, g2Dat, g2V, g2R);
   integer i;
   always @ (posedge clk) begin
     g2V = 1'b0;
-    if(RstRatch) begin
+    if(RstLatch) begin
       g2Dat = 1'b0;
       for(i = 0; i <= totUnits; i = i + 1)
         g2Dat = g2Dat + g2Temp[i];
@@ -78,7 +78,7 @@ module g2MemWrapper(clk, RST, g2MemWe, g2MemWa, g2Dat, g2V, g2R);
 
   always @ (posedge clk) begin
     addrPre <= addr;
-    if(RstRatch) begin
+    if(RstLatch) begin
       g2MemWePre <= {totUnits{1'b1}};
     end else begin
       if(RST)
@@ -122,18 +122,28 @@ module a2MemWrapper(clk, iD, iR, iV, oD, oV, oFlags, oFV);
   reg [totAddrBit:0] rp = {(totAddrBit+1){1'b0}};
   reg [totAddrBit:0] valPts = {(totAddrBit+1){1'b0}};
   wire [totAddrBit:0] wp, addRp;
+  reg [totUnits:0] oFlagsAt0 = {(totUnits+1){1'b0}};
   reg [totAddrBit:0] oFlowPts = 1'b0;
   reg [cycleBit:0] cycle = {(cycleBit+1){1'b0}};
   integer idx;
 
   always @ (posedge clk) begin
+    if(oFV&&(cycle=={(cycleBit+1){1'b0}})) begin
+      oFlagsAt0 <= oFlags;
+    end
+  end
+
+  always @ (posedge clk) begin
+    oFlowPts = 1'b0;
+    for (idx = 0; idx<=totUnits; idx = idx + 1)
+      oFlowPts = oFlowPts + oFlagsAt0[idx]; // oFlowPts calculated
+  end
+
+  always @ (posedge clk) begin
     if(oFV) begin
-      for (idx = 0; idx<=totUnits; idx = idx + 1)
-        oFlowPts = oFlowPts + oFlags[idx];// oFlowPts calculated
       if(cycle=={(cycleBit+1){1'b1}}) begin
         valPts = valPts - oFlowPts;
         rp = rp + oFlowPts;
-        oFlowPts = 1'b0;
       end
       cycle = cycle + {{cycleBit{1'b0}}, 1'b1}; 
     end
@@ -236,7 +246,7 @@ module g2Cal(clk, RST, a1, a1V, a1R, a2, a2V, a2R, g2Dat, g2V, g2R);
   output g2V;
   input g2R;
 
-  reg RstRatch = 1'b0;
+  reg RstLatch = 1'b0;
   reg unsigned [cycleBit:0] cycle = 1'b0;
   wire [iSIZE:0] a1Temp;
   wire [iSIZE:0] a2Temp[0:totUnits];

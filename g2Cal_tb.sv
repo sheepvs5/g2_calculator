@@ -31,9 +31,14 @@ module g2Cal_tb;
       #6      RST = 1'b1;
       #15000   RST = 1'b0;
       #10     RST = 1'b1;
-      #2500
-      for(k=0;k<50;k=k+1)
-         $display("%d\t", g2Save[k]);
+      #15000   RST = 1'b0;
+      #10     RST = 1'b1;
+      #15000   RST = 1'b0;
+      #10     RST = 1'b1;      
+      #10000   RST = 1'b0;
+      #10     RST = 1'b1;            
+      #15000   RST = 1'b0;
+      #10     RST = 1'b1;      
             
       $finish;
 
@@ -45,7 +50,7 @@ module g2Cal_tb;
 
    // a1 input
    always @ (posedge clk) begin
-      if(a1R&&(clk_counter%10==0)) begin
+      if(a1R&&(clk_counter%16==0)) begin
          a1 <= clk_counter;
          a1V <= 1;
       end else  a1V <= 0;
@@ -53,7 +58,7 @@ module g2Cal_tb;
 
    // a2 input
    always @ (posedge clk) begin
-      if(a2R&&(clk_counter%10==0)) begin
+      if(a2R&&(clk_counter%16==0)) begin
          a2 <= clk_counter;
          a2V <= 1;
       end else  a2V <= 0;

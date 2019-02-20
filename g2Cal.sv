@@ -62,6 +62,8 @@ module sumBuf(clk, iD, iR, iV, oD, oR, oV);
   input oR;
   output reg oV;
 
+  reg [datBit:0] iDBuf[0:(totUnits+1)/2];
+  reg iVBuf;
   reg [iSIZE:0] sumTemp;
   reg [iSIZE:0] sums[0:bufWidth];
   reg [bufAddrBit:0] ra = 1'b0;
@@ -73,13 +75,27 @@ module sumBuf(clk, iD, iR, iV, oD, oR, oV);
   assign wa = ra + valPts;
   assign oD = sums[ra];
 
+  generate
+  genvar pIdx;
+    for(pIdx=0;pIdx<(totUnits+1)/2;pIdx=pIdx+1) begin
+      always @ (posedge clk) begin
+        if(iR)
+          iDBuf[pIdx] <= iD[pIdx*2]+iD[pIdx*2+1];
+      end
+    end
+  endgenerate
+
+  always @ (posedge clk) begin
+    if(iR) iVBuf <= iV;
+  end
+
   // data write
   integer i;
   always @ (posedge clk) begin
-    if(iV&&iR) begin  // dat write
+    if(iVBuf&&iR) begin  // dat write
       sumTemp = 1'b0;
-      for(i = 0; i <= totUnits; i = i + 1)
-        sumTemp = sumTemp + iD[i];
+      for(i = 0; i < (totUnits+1)/2; i = i + 1)
+        sumTemp = sumTemp + iDBuf[i];
       sums[wa] = sumTemp;
       valPts = valPts + 1'b1;
     end

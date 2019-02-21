@@ -1,23 +1,31 @@
 `include "MemWrappers.sv"
 
-module SubFlagClk(clk, a, b, y, oFlag, uFlag); 
+module SubFlagPL(clk, a, av, b, bv, y, yv, oFlag, uFlag); 
   parameter iSIZE = 32-1;
   parameter oSIZE = 10-1;
   parameter oMax = (32'b1 << (oSIZE+1))-1;
   parameter oCenter = (32'b1 << (oSIZE))-1;
-  input clk;
+  input                         clk;
   input unsigned [iSIZE:0]      a;
+  input                         av;
   input unsigned [iSIZE:0]      b;
-  output reg unsigned [oSIZE:0] y; // y = a - b 
-  output reg                    oFlag;
-  output reg                    uFlag;
+  input                         bv;  
+  output reg unsigned [oSIZE:0] y = 1'b0;; // y = a - b 
+  output reg                    yv = 1'b0;
+  output reg                    oFlag = 1'b1;
+  output reg                    uFlag = 1'b1;
 
-  reg signed [iSIZE:0] subTemp;
+  reg signed [iSIZE:0] subTemp = '1;
+  reg val=1'b0;
   always @ (posedge clk) begin
-    subTemp = a - b + oCenter;
-    y = subTemp[oSIZE:0];
-    oFlag = (subTemp>$signed(oMax)) ? 1'b1 : 1'b0;
-    uFlag = (subTemp<$signed(32'b0)) ? 1'b1 : 1'b0;
+    // first stage: subtract
+    subTemp <= a - b + oCenter;
+    val <= av&bv;
+    // second stage: out
+    y <= subTemp[oSIZE:0];
+    yv <= val;
+    oFlag <= (subTemp>$signed(oMax)) ? 1'b1 : 1'b0;
+    uFlag <= (subTemp<$signed(32'b0)) ? 1'b1 : 1'b0;
   end
 
 endmodule
@@ -53,6 +61,8 @@ module g2Cal(clk, RST, a1, a1V, a1R, a2, a2V, a2R, g2Dat, g2V, g2R);
   wire [totUnits:0] g2MemWe;
   wire [g2MemAddrBit:0] g2MemWa[0:totUnits];
   wire oFV;
+  wire [totUnits:0] yvs;
+  wire next;
 
   a1MemWrapper#(
     .datBit(iSIZE),
@@ -65,7 +75,8 @@ module g2Cal(clk, RST, a1, a1V, a1R, a2, a2V, a2R, g2Dat, g2V, g2R);
     .iV(a1V), 
     .oD(a1Temp), 
     .oV(a1TempV),
-    .oFV(oFV));
+    .oFV(oFV),
+    .next(next));
 
   a2MemWrapper#(
     .datBit(iSIZE),
@@ -80,7 +91,8 @@ module g2Cal(clk, RST, a1, a1V, a1R, a2, a2V, a2R, g2Dat, g2V, g2R);
     .oD(a2Temp), 
     .oV(a2TempV), 
     .oFlags(oFlags),
-    .oFV(oFV));
+    .oFV(oFV),
+    .next(next));
 
   generate
     genvar pIdx;
@@ -89,7 +101,7 @@ module g2Cal(clk, RST, a1, a1V, a1R, a2, a2V, a2R, g2Dat, g2V, g2R);
       wire oFlag;
       wire uFlag;
       
-      SubFlagClk#(
+      SubFlagPL#(
         .iSIZE(iSIZE),
         .oSIZE(g2MemAddrBit),
         .oMax((32'b1 << (g2MemAddrBit+1))-1),
@@ -97,8 +109,11 @@ module g2Cal(clk, RST, a1, a1V, a1R, a2, a2V, a2R, g2Dat, g2V, g2R);
       ) subtract(
         .clk(clk),
         .a(a1Temp),
+        .av(a1TempV),
         .b(a2Temp[pIdx]),
+        .bv(a2TempV),        
         .y(address),
+        .yv(yvs[pIdx]),
         .oFlag(oFlag),
         .uFlag(uFlag)
         );
@@ -110,7 +125,8 @@ module g2Cal(clk, RST, a1, a1V, a1R, a2, a2V, a2R, g2Dat, g2V, g2R);
     end
   endgenerate
 
-  assign oFV = (a1TempV&&a2TempV) ? 1'b1 : 1'b0;
+  assign next = a1TempV&a2TempV;
+  assign oFV = yvs[0];
   assign g2MemWe = (oFV) ? (~oFlags)&(~uFlags) : {(totUnits+1){1'b0}};
 
   g2MemWrapper#(

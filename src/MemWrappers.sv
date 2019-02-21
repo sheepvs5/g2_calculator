@@ -66,7 +66,7 @@ module sumBuf(clk, iD, iR, iV, oD, oR, oV);
   always @ (posedge clk) begin
     if(iVBuf2&&iR) begin  // dat write
       sumTemp = 1'b0;
-      for(i = 0; i < (totUnits+1)/2; i = i + 1)
+      for(i = 0; i < (totUnits+1)/8; i = i + 1)
         sumTemp = sumTemp + iDBuf2[i];
       sums[wa] = sumTemp;
       valPts = valPts + 1;
@@ -173,7 +173,7 @@ module g2MemWrapper(clk, RST, g2MemWe, g2MemWa, g2Dat, g2V, g2R);
 endmodule
 
 
-module a2MemWrapper(clk, iD, iR, iV, oD, oV, oFlags, oFV);
+module a2MemWrapper(clk, iD, iR, iV, oD, oV, oFlags, oFV, next);
   parameter datBit = 32-1;
   parameter unitAddrBit = 3-1;
   parameter totAddrBit = 8-1;
@@ -188,29 +188,25 @@ module a2MemWrapper(clk, iD, iR, iV, oD, oV, oFlags, oFV);
   output oV;
   input [totUnits:0] oFlags;
   input oFV;
+  input next;
 
   reg [totAddrBit:0] rp = {(totAddrBit+1){1'b0}};
   reg [totAddrBit:0] valPts = {(totAddrBit+1){1'b0}};
   wire [totAddrBit:0] wp, addRp;
-  reg [totUnits:0] oFlagsAt0 = {(totUnits+1){1'b0}};
   reg [totAddrBit:0] oFlowPts = {(totAddrBit+1){1'b0}};
   reg [cycleBit:0] cycle = {(cycleBit+1){1'b0}};
   integer idx;
 
   always @ (posedge clk) begin
-    if(oFV&&(cycle=={(cycleBit+1){1'b0}})) begin
-      oFlagsAt0 <= oFlags;
+    if(oFV&&(cycle=={{cycleBit{1'b1}}, 1'b0})) begin
+      oFlowPts = {(totAddrBit+1){1'b0}};
+      for (idx = 0; idx<=totUnits; idx = idx + 1)
+        oFlowPts = oFlowPts + oFlags[idx]; // oFlowPts calculated
     end
   end
 
   always @ (posedge clk) begin
-    oFlowPts = {(totAddrBit+1){1'b0}};
-    for (idx = 0; idx<=totUnits; idx = idx + 1)
-      oFlowPts = oFlowPts + oFlagsAt0[idx]; // oFlowPts calculated
-  end
-
-  always @ (posedge clk) begin
-    if(oFV) begin
+    if(next) begin
       if(cycle=={(cycleBit+1){1'b1}}) begin
         valPts = valPts - oFlowPts;
         rp = rp + oFlowPts;
@@ -244,7 +240,7 @@ module a2MemWrapper(clk, iD, iR, iV, oD, oV, oFlags, oFV);
 endmodule
 
 
-module a1MemWrapper(clk, iD, iR, iV, oD, oV, oFV);
+module a1MemWrapper(clk, iD, iR, iV, oD, oV, oFV, next);
   parameter datBit = 32-1;
   parameter totAddrBit = 8-1;
   parameter cycleBit = 2-1;
@@ -256,6 +252,7 @@ module a1MemWrapper(clk, iD, iR, iV, oD, oV, oFV);
   output [datBit:0] oD;
   output oV;
   input oFV;
+  input next;
 
   reg [totAddrBit:0] rp = {(totAddrBit+1){1'b0}};
   reg [totAddrBit:0] valPts = {(totAddrBit+1){1'b0}};
@@ -263,7 +260,7 @@ module a1MemWrapper(clk, iD, iR, iV, oD, oV, oFV);
   reg [cycleBit:0] cycle = {(cycleBit+1){1'b0}};
 
   always @ (posedge clk) begin
-    if(oFV) begin
+    if(next) begin
       if(cycle=={(cycleBit+1){1'b1}}) begin
         valPts = valPts - {{totAddrBit{1'b0}}, 1'b1};
         rp = rp + {{totAddrBit{1'b0}}, 1'b1};

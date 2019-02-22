@@ -33,10 +33,10 @@ endmodule
 module g2Cal(clk, RST, a1, a1V, a1R, a2, a2V, a2R, g2Dat, g2V, g2R);
   parameter iSIZE = 32-1;
   parameter g2DatBit = 18-1;
-  parameter a1MemAddrBit = 8-1;
-  parameter a2MemAddrBit = 8-1;
+  parameter a1MemAddrBit = 9-1;
+  parameter a2MemAddrBit = 9-1;
   parameter g2MemAddrBit = 10-1;
-  parameter a2UnitMemAddrBit = 3-1;
+  parameter a2UnitMemAddrBit = 4-1;
   parameter cycleBit = 2-1;
 
   parameter totUnits = (32'b1 << (a2MemAddrBit-a2UnitMemAddrBit))-1;

@@ -14,8 +14,11 @@ The fastest clock for the synthesized module is 160 MHz with kintex-7 devices.
 ## Algorithm overview
 
 The module has two inputs: one input receives arrival times from "start" detector and the other one receives arrival times from "stop" detector.
-
-
+Each input is accepted through ready-valid handshake protocol.
+After accumulating enough arrival times in the memory, 1 element from "start" is sent to the comparator and N elements from "stop" are sent to the comparator.
+Each compared value is used as an address and the value at the address of "g2 Mem" is increased by 1.
+Below image shows the algorithm.
+<img src="https://github.com/sheepvs5/g2_calculator/blob/master/img/algorithm.PNG"/></a>
 
 ## Labview integration
 

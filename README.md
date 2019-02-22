@@ -2,7 +2,7 @@
 # Second order correlation calculator
 
 This code handles computing second order correlation function(<img src="https://latex.codecogs.com/gif.latex?g^2(\tau)" title="g^2(\tau)" /></a>) in a FPGA.
-The code is written in systemverilog and the synthesized file can be used in labview.
+The code is written in systemverilog and the synthesized file can be used in Labview.
 
 ## Cover range
 
@@ -22,4 +22,8 @@ Below image shows the algorithm.
 
 ## Labview integration
 
-component level ip
+Although the systemverilog file cannot be directly integrated into Labview code, component level IP(CLIP) supports the integration.
+Sample Labview project is included to demonstrate how to place input/output ports of the CLIP.
+VHDL code is used to wrap the synthesized file.
+Labview version: 2015
+Vivado version: 2014.4
